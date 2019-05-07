@@ -1,0 +1,21 @@
+{
+  "name": "djipui",
+  "version": "0.0.1",
+  "description": "",
+  "main": "dist/djip-ui.min.js",
+  "scripts": {},
+  "keywords": [
+    "ui",
+    "gui",
+    "settings"
+  ],
+  "author": "Jean-Philippe Côté <jp@djip.co>",
+  "license": "UNLICENSED",
+  "dependencies": {},
+  "devDependencies": {
+    "gulp": "^4.0.0",
+    "gulp-concat": "^2.6.1",
+    "gulp-jsdoc3": "^2.0.0",
+    "gulp-minify": "^3.1.0"
+  }
+}
