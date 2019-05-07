@@ -15,7 +15,7 @@ function doc(cb) {
 function bundle(cb) {
 
   return gulp.src(['./src/*.js'])                           // fetch source files
-    .pipe(concat(`djip-ui-v${package.version}.js`))     // concatenate them
+    .pipe(concat(`djipui-v${package.version}.js`))     // concatenate them
     .pipe(minify({ext: { min:'.min.js' } } ))           // minify
     .pipe(gulp.dest('./dist'));                             // write to disk
 

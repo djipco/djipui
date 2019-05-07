@@ -2,7 +2,7 @@
   "name": "djipui",
   "version": "0.0.1",
   "description": "",
-  "main": "dist/djip-ui.min.js",
+  "main": "dist/djipui.min.js",
   "scripts": {},
   "keywords": [
     "ui",
