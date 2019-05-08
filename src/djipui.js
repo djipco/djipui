@@ -1,5 +1,9 @@
-// Import modules
-import EventEmitter from "../libs/eventemitter3.js"; // library modified to publish ES6 module
+import EventEmitter from "./eventemitter.js"
+
+/**
+ * DjipUI Module
+ * @module djipui
+ */
 
 /**
  * CSS class name identifying all DOM elements in this library.
@@ -12,7 +16,7 @@ const DEFAULT_CLASS = "djipui";
  * The `Item` class is the basic abstract class from which all visual user interface elements
  * derive (panels, tiles, buttons, etc.). It usually isn't instantiated directly but it can be.
  *
- * @extends {EventEmitter}
+ * @extends EventEmitter
  * @abstract
  */
 export class Item extends EventEmitter {
@@ -38,9 +42,9 @@ export class Item extends EventEmitter {
     // Create a proxy to wrap the data object and update the UI when changes occur
     this.data = new Proxy(data, {
 
-      "set": (target, property, value) => {
+      set: (target, property, value) => {
         target[property] = value;
-        this._update(property);
+        this._updateData(property, value);
         return true; // success
       }
 
@@ -60,10 +64,11 @@ export class Item extends EventEmitter {
   /**
    *
    * @param property
-   * @protected
+   * @param value
+   * @private
    */
-  _update(property) {
-
+  _updateData(property, value) {
+    // this is meant to be overridden by extending classes
   }
 
   /**
@@ -171,8 +176,8 @@ export class Item extends EventEmitter {
 
     // Inject it
     if (cssString.length > 0) {
-      styleElement = document.createElement('style');
-      styleElement.type = 'text/css';
+      styleElement = document.createElement("style");
+      styleElement.type = "text/css";
       styleElement.setAttribute("id", id);
       styleElement.appendChild(document.createTextNode(cssString));
       document.head.appendChild(styleElement);
@@ -194,13 +199,13 @@ export class Item extends EventEmitter {
 
 /**
  * The `Container` class creates invisible containers that can be used to group items together.
- * @extends {Item}
+ * @extends Item
  */
 export class Container extends Item {
 
   constructor(options = {}, data = {}) {
 
-    super(options);
+    super(options, data);
 
     // Containers can have children
     this.children = options.children || [];
@@ -289,7 +294,7 @@ export class Container extends Item {
 
 /**
  * The `Tile` class creates a tile container that can be used to group items together.
- * @extends {Container}
+ * @extends Container
  */
 export class Tile extends Container {
 
@@ -375,7 +380,7 @@ export class Tile extends Container {
 
 /**
  * The `UI` class
- * @extends {Container}
+ * @extends Container
  */
 export class UI extends Container {
 
@@ -391,9 +396,9 @@ export class UI extends Container {
    * @param {Array} options.children - The children that should also be inserted. See the various
    * children (Panel, Screen, Value, Button, etc.) for more details on the syntax.
    */
-  constructor(options = {}) {
+  constructor(options = {}, data = {}) {
 
-    super(options);
+    super(options, data);
 
     // Add the domElement to the specified parentNode or the the <body> if none is specified. The UI
     // object does not have a parent because it is top-level
@@ -439,9 +444,10 @@ export class UI extends Container {
 
 }
 
-
-
-
+/**
+ * The `Value` class...
+ * @extends Item
+ */
 export class Value extends Item {
 
   constructor(options = {}, data = {}) {
@@ -449,6 +455,7 @@ export class Value extends Item {
     super(options, data);
 
     if (options.label) this.label = options.label;
+    if (data.value) this.value = data.value;
 
   }
 
@@ -457,7 +464,7 @@ export class Value extends Item {
     return `
       <div class="${DEFAULT_CLASS} item value">
         <h1 class="label">Label</h1>
-        <div class="content">${this.data.value.toString()}</div>
+        <div class="content"></div>
       </div>
     `;
 
@@ -469,6 +476,14 @@ export class Value extends Item {
 
   set label(value) {
     this.domElement.querySelector("h1").innerHTML = value;
+  }
+
+  get value() {
+    return this.domElement.querySelector("div.content").innerHTML;
+  }
+
+  set value(value) {
+    this.domElement.querySelector("div.content").innerHTML = value.toString();
   }
 
   get css() {
@@ -527,7 +542,8 @@ export class Value extends Item {
 
 /**
  * The `Button` class represents a single interactive button.
- * @extends {Item}
+ * @class
+ * @extends Item
  */
 export class Button extends Item {
 
@@ -616,7 +632,7 @@ export class Button extends Item {
 
 /**
  * The `Panel` class creates a panel container that can be used to group items together.
- * @extends {Container}
+ * @extends Container
  */
 export class Panel extends Container {
 
@@ -752,7 +768,7 @@ export class Panel extends Container {
       }
     }
 
-    trigger.addEventListener('mousedown', e => {
+    trigger.addEventListener("mousedown", e => {
 
       e.preventDefault();
 
@@ -765,12 +781,12 @@ export class Panel extends Container {
       // container.style.zIndex = (++index).toString();
 
       let reposition = e => {
-        container.style.left = initX + e.clientX - mousePressX + 'px';
-        container.style.top = initY + e.clientY - mousePressY + 'px';
+        container.style.left = initX + e.clientX - mousePressX + "px";
+        container.style.top = initY + e.clientY - mousePressY + "px";
       };
 
-      addEventListener('mousemove', reposition);
-      addEventListener('mouseup', () => removeEventListener('mousemove', reposition) );
+      addEventListener("mousemove", reposition);
+      addEventListener("mouseup", () => removeEventListener("mousemove", reposition) );
 
     });
 
@@ -780,7 +796,7 @@ export class Panel extends Container {
   _makeCollapsible(trigger) {
 
     if (this.collapsible) {
-      trigger.addEventListener('dblclick', () => this.toggleCollapse() );
+      trigger.addEventListener("dblclick", () => this.toggleCollapse() );
     }
 
   }
@@ -792,7 +808,7 @@ export class Panel extends Container {
     let content = this.domElement.querySelector(".content");
 
     if (content.style.display === "none") {
-      content.style.display = "block"
+      content.style.display = "block";
     } else {
       content.style.height = "";
       content.style.display = "none";
@@ -801,10 +817,6 @@ export class Panel extends Container {
   }
 
 }
-
-
-
-
 
 // Enum of available classes so they can be instantiated dynamically
 const CLASSES = {
