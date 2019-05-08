@@ -6,9 +6,12 @@ const package = require('./package.json');
 
 function doc(cb) {
 
+  let config = require('./.jsdoc.json');
+
   return gulp
     .src(['README.md', './src/**/*.js'], {read: false})
-    .pipe(jsdoc(cb))
+    .pipe(jsdoc(config, cb))
+    // .pipe(jsdoc(cb))
 
 }
 

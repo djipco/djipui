@@ -3,7 +3,9 @@
   "version": "0.0.1",
   "description": "",
   "main": "dist/djipui.min.js",
-  "scripts": {},
+  "scripts": {
+    "lint": "eslint ./src/*.js"
+  },
   "keywords": [
     "ui",
     "gui",
@@ -13,6 +15,9 @@
   "license": "UNLICENSED",
   "dependencies": {},
   "devDependencies": {
+    "eslint": "^5.16.0",
+    "eslint-config-prettier": "^4.2.0",
+    "foodoc": "0.0.9",
     "gulp": "^4.0.0",
     "gulp-concat": "^2.6.1",
     "gulp-jsdoc3": "^2.0.0",
