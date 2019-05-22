@@ -24,12 +24,11 @@ export class Item extends EventEmitter {
   /**
    * Creates an `Item` object.
    *
-   * @param {Object} [options={}] Options
+   * @param {Object} [options={}] Initialization options
    * @param {string} [options.id] The 'id' to use for the generated DOM element
    * @param {Container} [options.parent] The parent `Container` object.
-   * @param {Object} [data = {}] Data to use in the element
    */
-  constructor(options = {}, data = {}) {
+  constructor(options = {}) {
 
     super();
 
@@ -38,17 +37,6 @@ export class Item extends EventEmitter {
 
     // Listeners registered on other objects (for removal purposes)
     this._callbacks = {};
-
-    // Create a proxy to wrap the data object and update the UI when changes occur
-    this.data = new Proxy(data, {
-
-      set: (target, property, value) => {
-        target[property] = value;
-        this._updateData(property, value);
-        return true; // success
-      }
-
-    });
 
     // Render the DOM element and add ID if specified (must be done before setting the parent)
     if (options.id) this.id = options.id;
@@ -59,16 +47,6 @@ export class Item extends EventEmitter {
     // Inject styles
     this.injectStylesInHead(`styles-${DEFAULT_CLASS}-${this.type.toLowerCase()}`, this.css);
 
-  }
-
-  /**
-   *
-   * @param property
-   * @param value
-   * @private
-   */
-  _updateData(property, value) {
-    // this is meant to be overridden by extending classes
   }
 
   /**
@@ -203,13 +181,13 @@ export class Item extends EventEmitter {
  */
 export class Container extends Item {
 
-  constructor(options = {}, data = {}) {
+  constructor(options = {}) {
 
-    super(options, data);
+    super(options);
 
-    // Containers can have children
-    this.children = options.children || [];
-    this.children.forEach(item => this.addChild(item.type, item.options, item.data));
+    // Containers can have children. Add specified children (if any)
+    this.children = [];
+    (options.children || []).forEach(item => this.addChild(item.type, item.options));
 
   }
 
@@ -232,21 +210,22 @@ export class Container extends Item {
 
   }
 
-  addChild(type, options = {}, data = {}) {
-    options.parent = this; // THIS NEEDS TO BE IMPROVED!!!!
-    let child = new CLASSES[type](options, data);
+  addChild(type, options = {}) {
+    console.log("addChild", type, options);
+
+    options.parent = this;
+    console.log("children avant", type, this.children);
+    let child = new CLASSES[type](options);
     this.children.push(child);
+
+
+
+    console.log("children après", type, this.children);
     return child;
   }
 
   getChildById(id) {
-
-    this.children.forEach(child => {
-      if (child.id === id) return child;
-    });
-
-    return false;
-
+    return this.children.filter(child => child.id === id)[0] || false;
   }
 
   /**
@@ -259,7 +238,6 @@ export class Container extends Item {
   getDescendantById(id) {
 
     if (this.id === id) return this;
-    if (!Array.isArray(this.children)) return false;
 
     for (let i = 0; i < this.children.length; i += 1) {
 
@@ -275,6 +253,14 @@ export class Container extends Item {
 
     return false;
 
+  }
+
+  destroy() {
+    super.destroy();
+    this.children.forEach(child => {
+      console.log("allo", child);
+      child.destroy()
+    });
   }
 
   // removeChild(child) {
@@ -298,14 +284,14 @@ export class Container extends Item {
  */
 export class Tile extends Container {
 
-  constructor(options = {}, data = {}) {
-    super(options, data);
+  constructor(options = {}) {
+    super(options);
     if (options.label) this.label = options.label;
   }
 
   /**
    * A string that's used as a template to build the DOM element. This returns the default template
-   * before any options or data is injected.
+   * before any options are injected.
    *
    * @type {string}
    * @readonly
@@ -329,7 +315,7 @@ export class Tile extends Container {
         border-radius: 4px;
         overflow: hidden;
         margin-bottom: 0.5em;
-        width: calc(1/5*100% - (1 - 1/5)*0.5em);
+        width: calc(1/4*100% - (1 - 1/4)*0.5em);
       }
       
       .djipui.tile:last-child {
@@ -389,16 +375,16 @@ export class UI extends Container {
    * appended to the body unless a `parentNode` option is specified. You can have many `UI` objects
    * in the same page.
    *
-   * @param {Object} options - Options to pass to the constructor
-   * @param {string} options.parentNode - The DOM node to which the DOM element for this `UI` object
-   * should be appended.
-   * @param {string} options.id - The desired id to be used in the DOM for this element
-   * @param {Array} options.children - The children that should also be inserted. See the various
+   * @param {Object} [options] - Options to pass to the constructor
+   * @param {HTMLElement} [options.parentNode] - The DOM node to which the DOM element for this `UI`
+   * object should be appended.
+   * @param {string} [options.id] - The desired id to be used in the DOM for this element
+   * @param {Array} [options.children] - The children that should also be inserted. See the various
    * children (Panel, Screen, Value, Button, etc.) for more details on the syntax.
    */
-  constructor(options = {}, data = {}) {
+  constructor(options = {}) {
 
-    super(options, data);
+    super(options);
 
     // Add the domElement to the specified parentNode or the the <body> if none is specified. The UI
     // object does not have a parent because it is top-level
@@ -450,12 +436,12 @@ export class UI extends Container {
  */
 export class Value extends Item {
 
-  constructor(options = {}, data = {}) {
+  constructor(options = {}) {
 
-    super(options, data);
+    super(options);
 
     if (options.label) this.label = options.label;
-    if (data.value) this.value = data.value;
+    if (options.value) this.value = options.value;
 
   }
 
@@ -526,18 +512,6 @@ export class Value extends Item {
 
   }
 
-  _update(property) {
-
-    let value = this.data[property];
-
-    if (property === "label") {
-      this.domElement.querySelector("h1.label").innerHTML = value.toString();
-    } else if (property === "value") {
-      this.content.innerHTML = value.toString();
-    }
-
-  }
-
 }
 
 /**
@@ -547,9 +521,9 @@ export class Value extends Item {
  */
 export class Button extends Item {
 
-  constructor(options = {}, data = {}) {
+  constructor(options = {}) {
 
-    super(options, data);
+    super(options);
 
     if (options.label) this.label = options.label;
 
@@ -623,9 +597,15 @@ export class Button extends Item {
   }
 
   destroy() {
+
+    // Remove the DOM listener
     this.domElement.querySelector(".content > button").removeEventListener(
       "click", this._callbacks.click
     );
+
+    // Remove any external listeners that may have been added to the button
+    this.removeAllListeners();
+
   }
 
 }
@@ -644,15 +624,10 @@ export class Panel extends Container {
    * @param {string} [options.id]
    * @param {Array} [options.children]
    * @param {Boolean} [options.draggable=false]
-   *
-   * @param {Object} data The data that gets injected into the panel. This is also the data that is
-   * saved in localStorage.
-   *
-   *
    */
-  constructor(options = {}, data = {}) {
+  constructor(options = {}) {
 
-    super(options, data);
+    super(options);
 
     // Parse options
     this.draggable = options.draggable === true || false;
@@ -669,7 +644,7 @@ export class Panel extends Container {
 
   /**
    * A string that's used as a template to build the DOM element. This returns the default template
-   * before any options or data is injected.
+   * before any options are injected.
    *
    * @type {string}
    * @readonly
@@ -744,16 +719,6 @@ export class Panel extends Container {
 
   set draggable(value) {
     this.domElement.setAttribute("draggable", value === true);
-  }
-
-  _update(property) {
-
-    let value = this.data[property];
-
-    if (property === "label") {
-      this.domElement.querySelector("h1.label").innerHTML = value.toString();
-    }
-
   }
 
   _makeDraggable(trigger, container) {
