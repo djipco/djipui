@@ -1,4 +1,5 @@
 import EventEmitter from "./eventemitter.js"
+// import EventEmitter from "../node_modules/djipevents/dist/djipevents";
 
 /**
  * DjipUI Module
@@ -164,6 +165,8 @@ export class Item extends EventEmitter {
   }
 
   destroy() {
+
+    console.log(this);
 
     if (this.parent) {
       this.parent.content.removeChild(this.domElement);
@@ -610,6 +613,161 @@ export class Button extends Item {
 
 }
 
+export class Slider extends Item {
+
+  constructor(options = {}) {
+
+    super(options);
+
+    if (options.label) this.label = options.label;
+    if (options.value) this.value = options.value;
+
+    // Register listener on DOM object and store it for later removal
+    this._callbacks.change = e => {
+      this.domElement.querySelector(".content > div.value").innerHTML = e.target.value;
+      this.emit("release", {
+        type: "release",
+        value: e.target.value,
+        timeStamp: e.timeStamp,
+        target: this
+      });
+    };
+    this._callbacks.input = e => {
+      this.domElement.querySelector(".content > div.value").innerHTML = e.target.value;
+      this.emit("move", {
+        type: "move",
+        value: e.target.value,
+        timeStamp: e.timeStamp,
+        target: this
+      });
+    };
+
+    this.domElement.querySelector(".content > input").addEventListener(
+      "input", this._callbacks.input
+    );
+    this.domElement.querySelector(".content > input").addEventListener(
+      "change", this._callbacks.change
+    );
+
+  }
+
+  get template() {
+
+    return `
+      <div class="${DEFAULT_CLASS} item slider">
+        <h1 class="label">Label</h1>
+        <div class="content">
+          <input type="range" min="0" max="1" step="0.01">
+          <div class="value">0</div>
+        </div>
+      </div>
+    `;
+
+  }
+
+  get css() {
+
+    return `
+    
+      .${DEFAULT_CLASS}.slider {
+        width: 100%;
+        margin-bottom: 0.5em;
+      }
+      
+      .${DEFAULT_CLASS}.slider:last-child {
+        margin-bottom: 0;
+      }
+      
+      .${DEFAULT_CLASS}.slider .content {
+        width: 100%;
+        display: flex;
+        justify-content: space-between;
+      }
+      
+      .${DEFAULT_CLASS}.slider > h1 {
+        font-size: 1em;
+        font-weight: normal;
+        padding: 0.3em 0.5em 0.2em 0;
+        margin: 0;
+        width: 30%;
+      }
+      
+      .${DEFAULT_CLASS}.slider {
+        margin-bottom: 0.5em;
+        display: flex;
+        justify-content: space-between;
+        flex-grow: 1;
+        width: 100%;
+      }
+      
+      .${DEFAULT_CLASS}.slider:first-child {
+        padding-top: 0;
+      }
+      
+      .${DEFAULT_CLASS}.slider:last-child {
+        border-bottom: none;
+        margin-bottom: 0;
+      }
+      
+
+      
+      .${DEFAULT_CLASS}.slider > .content {
+        width: 70%;
+        border-radius: 0.25em;
+      }
+      
+      .${DEFAULT_CLASS}.slider > .content > input {
+        width: 85%
+      }
+      
+      .${DEFAULT_CLASS}.slider > .content > div {
+        width: 12%;
+        background-color: rgba(0, 0, 0, .2);
+        padding: 0.3em 0.2em 0.2em 0.4em;
+        border-radius: 0.25em;
+        text-align: center;
+      }
+    
+    `;
+
+
+  }
+
+  get label() {
+    return this.domElement.querySelector("h1").innerHTML;
+  }
+
+  set label(value) {
+    this.domElement.querySelector("h1").innerHTML = value.toString();
+  }
+
+  get value() {
+    return parseFloat(this.domElement.querySelector("div.content > input").value);
+  }
+
+  set value(value) {
+    console.log(value);
+    this.domElement.querySelector("div.content > input").value = parseFloat(value);
+    this.domElement.querySelector("div.content > div.value").innerHTML = value.toString();
+  }
+
+  destroy() {
+
+    this.domElement.querySelector(".content > input").removeEventListener(
+      "input", this._callbacks.input
+    );
+
+    this.domElement.querySelector(".content > input").removeEventListener(
+      "change", this._callbacks.change
+    );
+
+    // Remove any external listeners that may have been added to the button
+    this.removeAllListeners();
+
+  }
+
+}
+
 /**
  * The `Panel` class creates a panel container that can be used to group items together.
  * @extends Container
@@ -789,6 +947,7 @@ const CLASSES = {
   Container,
   Item,
   Panel,
+  Slider,
   Tile,
   UI,
   Value
