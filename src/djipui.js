@@ -26,6 +26,7 @@ export class Item extends EventEmitter {
    * Creates an `Item` object.
    *
    * @param {Object} [options={}] Initialization options
+   * @param {string} [options.disabled] Whether this element should be disabled or not
    * @param {string} [options.id] The 'id' to use for the generated DOM element
    * @param {Container} [options.parent] The parent `Container` object.
    */
@@ -33,17 +34,18 @@ export class Item extends EventEmitter {
 
     super();
 
-    this._domElement = null;
     this._parent = null;
 
     // Listeners registered on other objects (for removal purposes)
     this._callbacks = {};
 
     // Render the DOM element and add ID if specified (must be done before setting the parent)
-    if (options.id) this.id = options.id;
+    if (options.id !== undefined) this.id = options.id;
+
+    if (options.disabled !== undefined) this.disabled = options.disabled;
 
     // Add to parent (if parent has been specified)
-    if (options.parent) this.parent = options.parent;
+    if (options.parent !== undefined) this.parent = options.parent;
 
     // Inject styles
     this.injectStylesInHead(`styles-${DEFAULT_CLASS}-${this.type.toLowerCase()}`, this.css);
@@ -139,6 +141,18 @@ export class Item extends EventEmitter {
   }
 
   /**
+   * Whether this control is disabled
+   * @type {boolean}
+   */
+  get disabled() {
+    return this.domElement.classList.contains("disabled");
+  }
+
+  set disabled(value) {
+    this.domElement.classList.toggle("disabled", value);
+  }
+
+  /**
    * Transforms the specified CSS string into a valid <style> tag and injects it in the head of the
    * document. If a style is already present with the same id, it will be overwritten.
    *
@@ -166,10 +180,8 @@ export class Item extends EventEmitter {
 
   destroy() {
 
-    console.log(this);
-
     if (this.parent) {
-      this.parent.content.removeChild(this.domElement);
+      this.parent.content.removeChild(this.domElement);// il y a un problkème ici!!!
     }
 
     this.removeAllListeners();
@@ -214,17 +226,13 @@ export class Container extends Item {
   }
 
   addChild(type, options = {}) {
-    console.log("addChild", type, options);
 
     options.parent = this;
-    console.log("children avant", type, this.children);
     let child = new CLASSES[type](options);
     this.children.push(child);
 
-
-
-    console.log("children après", type, this.children);
     return child;
+
   }
 
   getChildById(id) {
@@ -261,7 +269,6 @@ export class Container extends Item {
   destroy() {
     super.destroy();
     this.children.forEach(child => {
-      console.log("allo", child);
       child.destroy()
     });
   }
@@ -289,7 +296,7 @@ export class Tile extends Container {
 
   constructor(options = {}) {
     super(options);
-    if (options.label) this.label = options.label;
+    if (options.label !== undefined) this.label = options.label;
   }
 
   /**
@@ -318,7 +325,7 @@ export class Tile extends Container {
         border-radius: 4px;
         overflow: hidden;
         margin-bottom: 0.5em;
-        width: calc(1/4*100% - (1 - 1/4)*0.5em);
+        width: calc(1/3*100% - (1 - 1/3)*0.5em);
       }
       
       .djipui.tile:last-child {
@@ -443,8 +450,8 @@ export class Value extends Item {
 
     super(options);
 
-    if (options.label) this.label = options.label;
-    if (options.value) this.value = options.value;
+    if (options.label !== undefined) this.label = options.label;
+    if (options.value !== undefined) this.value = options.value;
 
   }
 
@@ -472,12 +479,17 @@ export class Value extends Item {
   }
 
   set value(value) {
+    console.log("set value", value.toString());
     this.domElement.querySelector("div.content").innerHTML = value.toString();
   }
 
   get css() {
 
     return `
+    
+      .${DEFAULT_CLASS}.value.disabled {
+        opacity: 0.3
+      }
     
       .${DEFAULT_CLASS}.value {
         margin-bottom: 0.5em;
@@ -501,16 +513,266 @@ export class Value extends Item {
         font-weight: normal;
         padding: 0.3em 0.5em 0.2em 0;
         margin: 0;
-        width: 30%;
+        width: calc(40% - 5px);
       }
       
       .${DEFAULT_CLASS}.value > .content {
-        width: 70%;
+        width: 60%;
         background-color: rgba(0, 0, 0, .2);
         padding: 0.3em 0.2em 0.2em 0.4em;
         border-radius: 0.25em;
       }
       
+    `;
+
+  }
+
+}
+
+/**
+ * The `Meter` class...
+ * @extends Item
+ */
+export class Meter extends Item {
+
+  constructor(options = {}) {
+
+    super(options);
+
+    if (options.label !== undefined) this.label = options.label;
+    if (options.value !== undefined) this.value = options.value;
+
+  }
+
+  get template() {
+
+    return `
+      <div class="${DEFAULT_CLASS} item meter">
+        <h1 class="label">Label</h1>
+        <div class="content">
+          <div class="container">
+            <div class="display"></div>
+          </div>
+          <div class="value"></div>
+        </div>
+      </div>
+    `;
+
+  }
+
+  get label() {
+    return this.domElement.querySelector("h1").innerHTML;
+  }
+
+  set label(value) {
+    this.domElement.querySelector("h1").innerHTML = value;
+  }
+
+  get value() {
+    let display = this.domElement.querySelector("div.content > .container > .display");
+    return parseFloat(display.style.width) / 100;
+  }
+
+  set value(value) {
+
+    let display = this.domElement.querySelector("div.content > .container > .display");
+    display.style.width = parseFloat(value) * 100 + "%";
+
+    let rounded = Math.round(value.toString() * 100) / 100;
+    this.domElement.querySelector("div.content > div.value").innerHTML = rounded;
+
+  }
+
+  get css() {
+
+    return `
+    
+      * {
+        box-sizing: border-box;
+      }
+      
+      .${DEFAULT_CLASS}.meter.disabled {
+        opacity: 0.3
+      }
+
+      .${DEFAULT_CLASS}.meter {
+        margin-bottom: 0.5em;
+        display: flex;
+        justify-content: space-between;
+        flex-grow: 1;
+        width: 100%;
+      }
+
+      .${DEFAULT_CLASS}.meter:first-child {
+        padding-top: 0;
+      }
+
+      .${DEFAULT_CLASS}.meter:last-child {
+        border-bottom: none;
+        margin-bottom: 0;
+      }
+
+      .${DEFAULT_CLASS}.meter > h1 {
+        font-size: 1em;
+        font-weight: normal;
+        padding: 0.3em 0.5em 0.2em 0;
+        margin: 0;
+        width: calc(40% - 5px);
+      }
+
+      .${DEFAULT_CLASS}.meter > .content {
+        width: 60%;
+        display: flex;
+        justify-content: space-between;
+        padding: 0;
+      }
+
+      .${DEFAULT_CLASS}.meter > .content > .container {
+        width: calc(70% - 2.5px);
+        border-radius: 0.25em;
+        border: 1px rgba(0, 0, 0, 0.2) solid;
+      }
+
+      .${DEFAULT_CLASS}.meter > .content > .container > .display {
+        height: 100%;
+        background-color: rgba(0, 0, 0, .2);
+        border-radius: 0.25em;
+      }
+
+      .${DEFAULT_CLASS}.meter > .content > .value {
+        width: calc(30% - 2.5px);
+        background-color: rgba(0, 0, 0, .2);
+        border-radius: 0.25em;
+        padding: 0.3em 0.2em 0.2em 0.4em;
+        text-align: center;
+      }
+
+    `;
+
+  }
+
+}
+
+
+/**
+ * The `TextBlock` class...
+ * @extends Item
+ */
+export class TextBlock extends Item {
+
+  constructor(options = {}) {
+
+    super(options);
+
+    if (options.label !== undefined) this.label = options.label;
+    if (options.value !== undefined) this.value = options.value;
+
+  }
+
+  get template() {
+
+    return `
+      <div class="${DEFAULT_CLASS} item textblock">
+        <h1 class="label"></h1>
+        <div class="content">
+          <textarea rows="10"></textarea>
+        </div>
+      </div>
+    `;
+
+  }
+
+  get label() {
+    return this.domElement.querySelector("h1").innerHTML;
+  }
+
+  set label(value) {
+
+    let el = this.domElement.querySelector("h1");
+
+    el.innerHTML = value;
+
+    if (el.innerHTML.length > 0) {
+      el.classList.add("visible");
+    } else {
+      el.classList.remove("visible");
+    }
+
+  }
+
+  get value() {
+    return this.domElement.querySelector("div.content textarea").value;
+  }
+
+  set value(value) {
+    this.domElement.querySelector("div.content textarea").value = value.toString();
+  }
+
+  append(text, addNewLine = true) {
+    this.value += text;
+    if (addNewLine) this.value += "\n";
+  }
+
+  log(text) {
+    this.append("[" + new Date().toISOString() + "] ", false);
+    this.append(text);
+  }
+
+  get css() {
+
+    return `
+
+      .${DEFAULT_CLASS}.textblock.disabled {
+        opacity: 0.3
+      }
+      
+      .${DEFAULT_CLASS}.textblock {
+        margin-bottom: 0.5em;
+        display: flex;
+        justify-content: space-between;
+        flex-grow: 1;
+        width: 100%;
+      }
+
+      .${DEFAULT_CLASS}.textblock:first-child {
+        padding-top: 0;
+      }
+
+      .${DEFAULT_CLASS}.textblock:last-child {
+        border-bottom: none;
+        margin-bottom: 0;
+      }
+
+      .${DEFAULT_CLASS}.textblock > h1 {
+        font-size: 1em;
+        font-weight: normal;
+        padding: 0.3em 0.5em 0.2em 0;
+        margin: 0;
+        width: 30%;
+        display: none;
+      }
+      
+      .${DEFAULT_CLASS}.textblock > h1.visible {
+        display: block;
+      }
+
+      .${DEFAULT_CLASS}.textblock > .content {
+        width: 100%;
+        background-color: rgba(0, 0, 0, .2);
+        padding: 0;
+        border-radius: 0.25em;
+      }
+      
+      .${DEFAULT_CLASS}.textblock > .content > textarea {
+        background-color: rgba(0, 0, 0, 0);
+        padding: 0.2em 0.4em;
+        border: none;
+        color: rgba(255, 255, 255, 0.9);
+        width: 100%;
+        display: block;
+        font-size: 12px;
+      }
+
     `;
 
   }
@@ -528,10 +790,13 @@ export class Button extends Item {
 
     super(options);
 
-    if (options.label) this.label = options.label;
+    if (options.label !== undefined) this.label = options.label;
 
     // Register listener on DOM object and store it for later removal
-    this._callbacks.click = e => this.emit("click", e);
+    this._callbacks.click = e => {
+      if (!this.disabled) this.emit("click", e);
+    };
+
     this.domElement.querySelector(".content > button").addEventListener(
       "click", this._callbacks.click
     );
@@ -553,6 +818,10 @@ export class Button extends Item {
   get css() {
 
     return `
+    
+      .${DEFAULT_CLASS}.button.disabled {
+        opacity: 0.3
+      }
     
       .${DEFAULT_CLASS}.button {
         width: 100%;
@@ -580,6 +849,10 @@ export class Button extends Item {
       
       .${DEFAULT_CLASS}.button .content > button:hover {
         background-color: rgba(0, 0, 0, .3);
+      }
+
+      .${DEFAULT_CLASS}.button.disabled .content > button:hover {
+        background-color: rgba(0, 0, 0, .2);
       }
   
       .${DEFAULT_CLASS}.button .content > button:active {
@@ -619,11 +892,15 @@ export class Slider extends Item {
 
     super(options);
 
-    if (options.label) this.label = options.label;
-    if (options.value) this.value = options.value;
+    if (options.label !== undefined) this.label = options.label;
+    if (options.value !== undefined) this.value = options.value;
+    if (options.minimum !== undefined) this.minimum = options.minimum;
+    if (options.maximum !== undefined) this.maximum = options.maximum;
+    if (options.increment !== undefined) this.increment = options.increment;
 
     // Register listener on DOM object and store it for later removal
     this._callbacks.change = e => {
+      if (this.disabled) return;
       this.domElement.querySelector(".content > div.value").innerHTML = e.target.value;
       this.emit("release", {
         type: "release",
@@ -632,7 +909,9 @@ export class Slider extends Item {
         target: this
       });
     };
+
     this._callbacks.input = e => {
+      if (this.disabled) return;
       this.domElement.querySelector(".content > div.value").innerHTML = e.target.value;
       this.emit("move", {
         type: "move",
@@ -669,6 +948,10 @@ export class Slider extends Item {
 
     return `
     
+      .${DEFAULT_CLASS}.slider.disabled {
+        opacity: 0.3
+      }
+    
       .${DEFAULT_CLASS}.slider {
         width: 100%;
         margin-bottom: 0.5em;
@@ -679,9 +962,10 @@ export class Slider extends Item {
       }
       
       .${DEFAULT_CLASS}.slider .content {
-        width: 100%;
+        width: 60%;
         display: flex;
         justify-content: space-between;
+        border-radius: 0.25em;
       }
       
       .${DEFAULT_CLASS}.slider > h1 {
@@ -689,7 +973,7 @@ export class Slider extends Item {
         font-weight: normal;
         padding: 0.3em 0.5em 0.2em 0;
         margin: 0;
-        width: 30%;
+        width: 40%;
       }
       
       .${DEFAULT_CLASS}.slider {
@@ -710,18 +994,12 @@ export class Slider extends Item {
       }
       
 
-      
-      .${DEFAULT_CLASS}.slider > .content {
-        width: 70%;
-        border-radius: 0.25em;
-      }
-      
       .${DEFAULT_CLASS}.slider > .content > input {
-        width: 85%
+        width: 80%
       }
       
       .${DEFAULT_CLASS}.slider > .content > div {
-        width: 12%;
+        width: 18%;
         background-color: rgba(0, 0, 0, .2);
         padding: 0.3em 0.2em 0.2em 0.4em;
         border-radius: 0.25em;
@@ -741,12 +1019,44 @@ export class Slider extends Item {
     this.domElement.querySelector("h1").innerHTML = value.toString();
   }
 
+
+
+  get minimum() {
+    return this.domElement.querySelector("input").getAttribute("min");
+  }
+
+  set minimum(value) {
+    this.domElement.querySelector("input").setAttribute("min", value);
+  }
+
+  get maximum() {
+    return this.domElement.querySelector("input").getAttribute("max");
+  }
+
+  set maximum(value) {
+    this.domElement.querySelector("input").setAttribute("max", value);
+  }
+
+  get increment() {
+    return this.domElement.querySelector("input").getAttribute("max");
+  }
+
+  set increment(value) {
+    this.domElement.querySelector("input").setAttribute("step", value);
+  }
+
+
+
+
+
+
+
+
   get value() {
     return parseFloat(this.domElement.querySelector("div.content > input").value);
   }
 
   set value(value) {
-    console.log(value);
     this.domElement.querySelector("div.content > input").value = parseFloat(value);
     this.domElement.querySelector("div.content > div.value").innerHTML = value.toString();
   }
@@ -789,7 +1099,7 @@ export class Panel extends Container {
 
     // Parse options
     this.draggable = options.draggable === true || false;
-    if (options.label) this.label = options.label;
+    if (options.label !== undefined) this.label = options.label;
 
     // this.collapsible = options.collapsible === true || false;
     // this.collapsed = options.collapsed === true || false;
@@ -946,8 +1256,10 @@ const CLASSES = {
   Button,
   Container,
   Item,
+  Meter,
   Panel,
   Slider,
+  TextBlock,
   Tile,
   UI,
   Value
